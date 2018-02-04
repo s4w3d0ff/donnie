@@ -1,11 +1,12 @@
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 #
 #    BTC: 13MXa7EdMYaXaQK6cDHqd4dwr2stBK3ESE
 #    LTC: LfxwJHNCjDh2qyJdfu22rBFi2Eu8BjQdxj
 #
-#    https://github.com/s4w3d0ff/marconibot
+#    https://github.com/s4w3d0ff/donnie
 #
-#    Copyright (C) 2017  https://github.com/s4w3d0ff
+#    Copyright (C) 2018  https://github.com/s4w3d0ff
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -20,7 +21,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# core ---------------------------------------------------------------------
+# core
 import sys
 import logging
 import json
@@ -29,7 +30,7 @@ from math import pi as PI
 from time import time, gmtime, strftime, strptime, localtime, mktime, sleep
 from calendar import timegm
 
-# 3rd party ----------------------------------------------------------------
+# 3rd party
 import numpy as np
 import pandas as pd
 import pymongo

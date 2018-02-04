@@ -1,12 +1,16 @@
-# Poloniex API wrapper tested on Python 2.7.6 & 3.4.3
-# https://github.com/s4w3d0ff/donnie
-# BTC: 1A7K4kgXLSSzvDRjvoGwomvhrNU4CKezEp
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 #
-#    Copyright (C) 2016  https://github.com/s4w3d0ff
+#    BTC: 13MXa7EdMYaXaQK6cDHqd4dwr2stBK3ESE
+#    LTC: LfxwJHNCjDh2qyJdfu22rBFi2Eu8BjQdxj
 #
-#    This program is free software; you can redistribute it and/or modify
+#    https://github.com/s4w3d0ff/donnie
+#
+#    Copyright (C) 2018  https://github.com/s4w3d0ff
+#
+#    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation; either version 2 of the License, or
+#    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 #
 #    This program is distributed in the hope that it will be useful,
@@ -14,10 +18,9 @@
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
-#    You should have received a copy of the GNU General Public License along
-#    with this program; if not, write to the Free Software Foundation, Inc.,
-#    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
 # python 2
 try:
     from urllib import urlencode as _urlencode
@@ -25,7 +28,7 @@ try:
 # python 3
 except:
     from urllib.parse import urlencode as _urlencode
-
+# core
 from json import loads as _loads
 from json import dumps as _dumps
 from hmac import new as _new
@@ -40,8 +43,8 @@ from requests import Session
 from websocket import WebSocketApp
 
 # local
-from tools import (pd, pymongo, getLogger, time, sleep, UTCstr2epoch,
-                   MINUTE, HOUR, DAY, WEEK, MONTH, YEAR, SATOSHI)
+from ..tools import (pd, pymongo, getLogger, time, sleep, UTCstr2epoch,
+                     MINUTE, HOUR, DAY, WEEK, MONTH, YEAR, SATOSHI)
 
 # logger
 logger = getLogger(__name__)

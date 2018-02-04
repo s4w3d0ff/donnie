@@ -20,6 +20,20 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import tools
-import poloniex
-import indicators
+#
+from setuptools import setup
+
+setup(name='marconi',
+      version='0.0.1',
+      description='Poloniex tradebot toolkit',
+      url='https://github.com/s4w3d0ff/donnie',
+      author='s4w3d0ff',
+      license='GPL v3',
+      packages=['donnie'],
+      setup_requires=['pandas', 'numpy', 'scipy'],
+      install_requires=[
+          'pymongo',
+          'websocket-client',
+          'requests'
+      ],
+      zip_safe=False)

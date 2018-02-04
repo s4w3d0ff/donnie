@@ -1,0 +1,28 @@
+language: python
+
+notifications:
+  email: false
+
+python:
+  - "2.7"
+  - "3.5"
+
+sudo: false
+
+before_install:
+  # make sure we have wheel and setuptools
+  - pip install -U pip wheel setuptools
+  # pre install scientific wheels so we dont have to build
+  - pip install --only-binary=numpy,scipy,pandas numpy scipy pandas
+
+install:
+  - python setup.py install
+
+script:
+  # test import
+  - python -c 'import donnie'
+
+# cashe pip
+cache:
+  directories:
+    - $HOME/.cache/pip
