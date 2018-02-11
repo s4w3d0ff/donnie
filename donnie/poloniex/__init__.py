@@ -35,7 +35,7 @@ from hmac import new as _new
 from hashlib import sha512 as _sha512
 from itertools import chain as _chain
 from functools import wraps as _wraps
-from threading import Semaphore, Timer, Thread
+from threading import Semaphore, Timer
 
 # 3rd party
 from requests.exceptions import RequestException
@@ -44,7 +44,8 @@ from websocket import WebSocketApp
 
 # local
 from ..tools import (pd, pymongo, getLogger, time, sleep, UTCstr2epoch,
-                     MINUTE, HOUR, DAY, WEEK, MONTH, YEAR, SATOSHI)
+                     MINUTE, HOUR, DAY, WEEK, MONTH, YEAR, SATOSHI,
+                     getDatabase, roundDown, geoProgress, Thread)
 
 # logger
 logger = getLogger(__name__)
@@ -91,18 +92,16 @@ PRIVATE_COMMANDS = [
     'getMarginPosition',
     'closeMarginPosition']
 
+# parent trade minimums
 TRADE_MINS = {
     "BTC": 0.0001,
     "USDT": 0.0001,
     "ETH": 0.0001,
     "XMR": 0.0001
 }
+
 # smallest loan fraction
 LOANTOSHI = 0.000001
-
-MINUTE, HOUR, DAY = 60, 60 * 60, 60 * 60 * 24
-WEEK, MONTH = DAY * 7, DAY * 30
-YEAR = DAY * 365
 
 
 class PoloniexError(Exception):
@@ -228,12 +227,12 @@ class PoloniexBase(object):
                 self._nonce = int(
                     out['error'].split('.')[0].split()[-1])
                 # raise RequestException so we try again
-                raise RequestException('PoloniexError ' + out['error'])
+                raise RequestException('PoloniexError: ' + out['error'])
 
             # conncetion timeout from poloniex
             if "please try again" in out['error'].lower():
                 # raise RequestException so we try again
-                raise RequestException('PoloniexError ' + out['error'])
+                raise RequestException('PoloniexError: ' + out['error'])
 
             # raise other poloniex errors, ending retry loop
             else:
@@ -674,7 +673,12 @@ class PoloniexBase(object):
 
 
 class wsPoloniex(PoloniexBase):
+    """
+    Poloniex Object with websocket thread
+    """
+
     def _handle_tick(self, message):
+        """ Handles ticker messages from the websocket """
         if message[1] == 1:
             return logger.info('Subscribed to ticker')
         if message[1] == 0:
@@ -696,6 +700,7 @@ class wsPoloniex(PoloniexBase):
         self.heartbeat = time()
 
     def _handle_stats(self, message):
+        """ Handles the 'stats' messages from the websocket """
         if message[1] == 1:
             return logger.info('Subscribed to stat updates')
         if message[1] == 0:
@@ -705,6 +710,7 @@ class wsPoloniex(PoloniexBase):
         self.heartbeat = time()
 
     def _handle_orderbook(self, message):
+        """ Handles the orderbook messages from the websocket """
         if message[1] == 1:
             return logger.info('Subscribed to %s orderbook' % message[0])
         if message[1] == 0:
@@ -713,9 +719,11 @@ class wsPoloniex(PoloniexBase):
         self.heartbeat = time()
 
     def _handle_heartbeat(self, message):
+        """ Handles the heartbeat messages from the websocket """
         self.heartbeat = time()
 
     def _on_message(self, ws, message):
+        """ Handles all messages from the websocket """
         message = _loads(message)
         if 'error' in message:
             return logger.error(message['error'])
@@ -737,9 +745,11 @@ class wsPoloniex(PoloniexBase):
                 logging.debug(message)
 
     def _on_error(self, ws, error):
+        """ Handles error messages from the websocket """
         logger.error(error)
 
     def _on_close(self, ws):
+        """ Fires when the websocket is closed """
         if self._wst._running:
             try:
                 self.stopWebsocket()
@@ -749,6 +759,7 @@ class wsPoloniex(PoloniexBase):
             logger.info("Websocket closed!")
 
     def _on_open(self, ws):
+        """ Fires when the websocket is connected (used for subscribing) """
         for channel in self._wsSubs:
             self._ws.send(_dumps({'command': 'subscribe', 'channel': channel}))
 
@@ -802,8 +813,12 @@ class wsPoloniex(PoloniexBase):
         return self.returnTicker()
 
 
-# databased wrapper with websocket
 class Poloniex(wsPoloniex):
+    """
+    Everything that is PoloniexBase and wsPoloniex but with mongodb support for
+    chart data, trade history, and lending history. It also has a few other
+    helper methods.
+    """
 
     def chartDataframe(self, pair, start=None, zoom=None, indicators=None):
         """ returns chart data in a dataframe from mongodb, updates/fills the
@@ -965,7 +980,8 @@ class Poloniex(wsPoloniex):
                 logger.debug(self.cancelOrder(order["orderNumber"]))
 
     def getOrder(self, orderNum):
-        # is the order open?
+        """ Helper method for getting an order by 'orderNumber' that reduces
+        api errors """
         orders = self.returnOpenOrders("all")
         for market in orders:
             for order in market:
@@ -974,13 +990,44 @@ class Poloniex(wsPoloniex):
         # else see if it made trades
         return self.myTradeHistory(query={'orderNumber': int(orderNum)})
 
+    def cancelAllLoanOffers(self, coin=False):
+        """ Cancels all open loan offers, for all coins or a single <coin> """
+        loanOrders = self.returnOpenLoanOffers()
+        if not coin:
+            for c in loanOrders:
+                for order in loanOrders[c]:
+                    logger.info(self.cancelLoanOffer(order['id']))
+        else:
+            for order in loanOrders[coin]:
+                logger.info(self.cancelLoanOffer(order['id']))
+
+    def closeAllMargins(self):
+        """ Closes all margin positions """
+        for m in self.returnTradableBalances():
+            logger.info(self.closeMarginPosition(m))
+
+    def autoRenewAll(self, toggle=True):
+        """ Turns auto-renew on or off for all active loans """
+        for loan in self.returnActiveLoans()['provided']:
+            if int(loan['autoRenew']) != int(toggle):
+                logger.info('Toggling autorenew for offer %s', loan['id'])
+                self.toggleAutoRenew(loan['id'])
+
 
 class PoloniexAdv(Poloniex):
+    """
+    Everything that is 'Poloniex' but with threaded stop limit feature
+    """
+
     def __init__(self, *args, **kwargs):
         super(Poloniex, self).__init__(*args, **kwargs)
         self.stops = {}
 
     def addStop(self, pair, amount, stop, limit, interval=2):
+        """
+        Adds a new stop limit to 'self.stops[<pair>][<stop>]' and starts
+        the thread
+        """
         if not pair in self.stops:
             self.stops[pair] = {}
 
@@ -989,6 +1036,7 @@ class PoloniexAdv(Poloniex):
         self.stops[pair][str(stop)].start()
 
     def cancelStops(self, market='all'):
+        """ Cancels all stops for a market or all markets """
         if market == 'all':
             for pair in self.stops:
                 for stop in self.stops[pair]:
@@ -1002,8 +1050,11 @@ class PoloniexAdv(Poloniex):
             logger.info('%s stops canceled', pair)
 
     class StopLimit(Thread):
-        def __init__(self, api, pair, amount, stop, limit, interval=2):
-            super(PoloniexAdv.StopLimit, self).__init__()
+        """ Stop limit thread """
+
+        def __init__(self, api, pair, amount, stop, limit,
+                     interval=2, *args, **kwargs):
+            super(PoloniexAdv.StopLimit, self).__init__(*args, **kwargs)
             self.api = api
             self.pair = pair
             self.amount = amount

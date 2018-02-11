@@ -29,6 +29,7 @@ from math import floor, ceil
 from math import pi as PI
 from time import time, gmtime, strftime, strptime, localtime, mktime, sleep
 from calendar import timegm
+from threading import Thread
 
 # 3rd party
 import numpy as np
@@ -91,6 +92,9 @@ def GY(text):
 
 # convertions, misc ------------------------------------------------------
 def getHomeDir():
+    """
+    returns string path to users home folder
+    """
     try:
         from pathlib import Path
         return str(Path.home())
@@ -100,6 +104,9 @@ def getHomeDir():
 
 
 def isString(obj):
+    """
+    Checks if an object instance is a string
+    """
     return isinstance(obj, str if sys.version_info[0] >= 3 else basestring)
 
 
