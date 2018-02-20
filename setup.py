@@ -23,7 +23,7 @@
 #
 from setuptools import setup
 
-setup(name='marconi',
+setup(name='donnie',
       version='0.0.1',
       description='Poloniex tradebot toolkit',
       url='https://github.com/s4w3d0ff/donnie',

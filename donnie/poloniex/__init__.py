@@ -179,7 +179,7 @@ class PoloniexBase(object):
 
     @property
     def nonce(self):
-        """ Increments the nonce """
+        """ Increments and returns the nonce """
         self._nonce += 42
         return self._nonce
 
@@ -880,6 +880,28 @@ class Poloniex(wsPoloniex):
                                                   'volume': 'sum',
                                                   'weightedAverage': 'mean'})
             df.reset_index(inplace=True)
+        if indicators:
+            df = self.addIndicators(df, **indicators)
+        return df
+
+    def addIndicators(self, df, **indica):
+        # save macd for last if it is defined
+        macdC = False
+        if 'macd' in indica:
+            macdC = indica.pop('macd')
+
+        # fill df with indicators
+        availInd = dir(indicators)
+        for ind in indica:
+            if ind in availInd:
+                df = getattr(indicators, ind)(df, **indica[ind])
+
+        # do macd last if it is defined
+        if macdC:
+            df = getattr(indicators, 'macd')(df, **macdC)
+            indica['macd'] = macdC
+
+        df['percentChange'] = df['close'].pct_change().round(8) * 100
         return df
 
     def myTradeHistory(self, pair, query=None):
