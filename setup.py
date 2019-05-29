@@ -33,6 +33,6 @@ setup(name='donnie',
       setup_requires=['pandas', 'numpy', 'scipy'],
       install_requires=[
           'pymongo',
-          'polonniexapi'
+          'poloniexapi'
       ],
       zip_safe=False)
