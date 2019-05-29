@@ -21,8 +21,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from . import tools
-from . import poloniex
 from . import indicators
+import poloniex
 
 logger = tools.getLogger(__name__)
 
@@ -32,7 +32,7 @@ class Donnie(object):
     def __init__(self, key=None, secret=None, interval=2, *args, **kwargs):
         if not 'jsonNums' in kwargs:
             kwargs['jsonNums'] = float
-        self.api = poloniex.PoloniexAdv(key, secret, *args, **kwargs)
+        self.api = poloniex.PoloniexSocketed(key, secret, *args, **kwargs)
         self._running = False
         self.interval = interval
         self.mThread = None

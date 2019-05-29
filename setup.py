@@ -33,7 +33,6 @@ setup(name='donnie',
       setup_requires=['pandas', 'numpy', 'scipy'],
       install_requires=[
           'pymongo',
-          'websocket-client',
-          'requests'
+          'polonniexapi'
       ],
       zip_safe=False)
