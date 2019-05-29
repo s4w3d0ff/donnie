@@ -23,9 +23,13 @@
 #
 from setuptools import setup
 
+read_md = lambda f: open(f, 'r').read()
+
 setup(name='donnie',
       version='0.0.1',
       description='Poloniex tradebot toolkit',
+      long_description=read_md('README.md'),
+      long_description_content_type='text/markdown',
       url='https://github.com/s4w3d0ff/donnie',
       author='s4w3d0ff',
       license='GPL v3',
@@ -35,4 +39,14 @@ setup(name='donnie',
           'pymongo',
           'poloniexapi'
       ],
-      zip_safe=False)
+      zip_safe=False,
+      keywords=['poloniex', 'poloniexapi', 'exchange', 'api'],
+      classifiers = [
+            'Operating System :: MacOS :: MacOS X',
+            'Operating System :: Microsoft :: Windows',
+            'Operating System :: POSIX',
+            'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
+            'Programming Language :: Python :: 2',
+            'Programming Language :: Python :: 3'
+            ]
+      )
