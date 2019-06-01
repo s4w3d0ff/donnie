@@ -37,10 +37,11 @@ setup(name='donnie',
       setup_requires=['pandas', 'numpy', 'scipy'],
       install_requires=[
           'pymongo',
-          'poloniexapi'
+          'poloniexapi',
+          'finta'
       ],
       zip_safe=False,
-      keywords=['poloniex', 'poloniexapi', 'exchange', 'api'],
+      keywords=['poloniex', 'poloniexapi', 'exchange', 'api', 'tradebot', 'framework'],
       classifiers = [
             'Operating System :: MacOS :: MacOS X',
             'Operating System :: Microsoft :: Windows',

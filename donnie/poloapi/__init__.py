@@ -1,51 +1,12 @@
 import poloniex
 
-class StopLimit(object):
-    def __init__(self, market, amount, stop, limit, test=False):
-        self.market = str(market)
-        self.amount = float(amount)
-        self.stop = float(stop)
-        self.limit = float(limit)
-        self.order = False
-        self.logger = poloniex.logging.getLogger('StopLimit')
-        self.logger.setLevel(poloniex.logging.DEBUG)
-        self.test = test
-
-    def check(self, lowAsk, highBid):
-        # sell
-        if self.amount < 0 and self.stop >= float(highBid):
-            # dont place order if we are testing
-            if self.test:
-                self.order = True
-            else:
-                # sell amount at limit
-                self.order = self.sell(self.market,
-                                       self.limit,
-                                       abs(self.amount))
-
-            self.logger.info('%s sell stop order triggered! (%s)',
-                             self.market, str(self.stop))
-        # buy
-        if self.amount > 0 and self.stop <= float(lowAsk):
-            # dont place order if we are testing
-            if self.test:
-                self.order = True
-            else:
-                # buy amount at limit
-                self.order = self.buy(self.market, self.limit, self.amount)
-
-            self.logger.info('%s buy stop order triggered! (%s)',
-                             self.market, str(self.stop))
-
-    def __call__(self):
-        return self.order
-
 
 class Poloniex(poloniex.Poloniex):
     def __init__(self, *args, **kwargs):
         super(Poloniex, self).__init__(*args, **kwargs)
+        # holds stop orders
         self.stopOrders = {}
-        # tick holds ticker data
+        # holds ticker data
         self.tick = {}
         # get inital ticker data
         iniTick = self.returnTicker()
@@ -56,31 +17,6 @@ class Poloniex(poloniex.Poloniex):
             self.tick[self._ids[market]] = {
                 item: float(iniTick[market][item]) for item in iniTick[market]
                 }
-
-    def ticker(self, market=None):
-        '''returns ticker data saved from websocket '''
-        if not self._t or not self._running or self.channels['1002']['sub']:
-            self.logger.error("Websocket isn't running or not subscribed to ticker!")
-            return self.returnTicker()
-        if market:
-            return self.tick[self._ids[market]]
-        return self.tick
-
-    def _checkStops(self, msg):
-        mktid = str(msg[0])
-        mkt = self.channels[mktid]['name']
-        la = msg[2]
-        hb = msg[3]
-        for order in self.stopOrders:
-            if str(self.stopOrders[order].market) == str(mkt) and not self.stopOrders[order]():
-                self.logger.debug('%s lowAsk=%s highBid=%s',
-                                  mkt, str(la), str(hb))
-                self.stopOrders[order].check(la, hb)
-
-    def addStopLimit(self, market, amount, stop, limit, test=False):
-        self.logger.debug('%s stop limit set: [Amount]%.8f [Stop]%.8f [Limit]%.8f',
-                          market, amount, stop, limit)
-        self.stopOrders[market+str(stop)] = StopLimit(market, amount, stop, limit, test)
 
     def on_ticker(self, msg):
         # save ticker updates to self.tick
@@ -96,4 +32,70 @@ class Poloniex(poloniex.Poloniex):
                                   'high24hr': data[8],
                                   'low24hr': data[9]
                                   }
-        self._checkStops(msg)
+        # check stop orders
+        mkt = self.channels[str(data[0])]['name']
+        la = data[2]
+        hb = data[3]
+        for id in self.stopOrders:
+            # market matches and the order hasnt triggered yet
+            if str(self.stopOrders[id].market) == str(mkt) and not self.stopOrders[id]['order']:
+                self.logger.debug('%s lowAsk=%s highBid=%s', mkt, str(la), str(hb))
+                self._check_stop(id, la, hb)
+
+
+
+    def _check_stop(self, id, lowAsk, highBid):
+        amount = self.stopOrders[id]['amount']
+        stop = self.stopOrders[id]['stop']
+        test = self.stopOrders[id]['test']
+        # sell
+        if amount < 0 and stop >= float(highBid):
+            # dont place order if we are testing
+            if test:
+                self.stopOrders[id]['order'] = True
+            else:
+                # sell amount at limit
+                self.stopOrders[id]['order'] = self.sell(
+                    self.stopOrders[id]['market'],
+                    self.stopOrders[id]['limit'],
+                    abs(amount))
+
+            self.logger.info('%s sell stop order triggered! (%s)',
+                             self.stopOrders[id]['market'],
+                             str(stop))
+        # buy
+        if amount > 0 and stop <= float(lowAsk):
+            # dont place order if we are testing
+            if test:
+                self.stopOrders[id]['order'] = True
+            else:
+                # buy amount at limit
+                self.stopOrders[id]['order'] = self.buy(
+                    self.stopOrders[id]['market'],
+                    self.stopOrders[id]['limit'],
+                    amount)
+
+            self.logger.info('%s buy stop order triggered! (%s)',
+                             self.stopOrders[id]['market'],
+                             str(stop))
+
+
+    def addStopLimit(self, market, amount, stop, limit, test=False):
+        self.stopOrders[market+str(stop)] = {'market': market,
+                                             'amount': amount,
+                                             'stop': stop,
+                                             'limit': limit,
+                                             'test': test,
+                                             'order': False)
+                                            }
+        self.logger.debug('%s stop limit set: [Amount]%.8f [Stop]%.8f [Limit]%.8f',
+                          market, amount, stop, limit)
+
+    def ticker(self, market=None):
+        '''returns ticker data saved from websocket '''
+        if not self._t or not self._running or self.channels['1002']['sub']:
+            self.logger.error("Websocket isn't running or not subscribed to ticker!")
+            return self.returnTicker()
+        if market:
+            return self.tick[self._ids[market]]
+        return self.tick
