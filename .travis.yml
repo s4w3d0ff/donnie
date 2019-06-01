@@ -1,8 +1,14 @@
+dist: xenial
 language: python
 notifications:
   email: false
 python:
   - "3.5"
+  - "3.5-dev"
+  - "3.6"
+  - "3.6-dev"
+  - "3.7"
+  - "3.7-dev"
 sudo: false
 before_install:
   # make sure we have wheel and setuptools
