@@ -86,7 +86,7 @@ class Poloniex(poloniex.Poloniex):
                                              'stop': stop,
                                              'limit': limit,
                                              'test': test,
-                                             'order': False)
+                                             'order': False
                                             }
         self.logger.debug('%s stop limit set: [Amount]%.8f [Stop]%.8f [Limit]%.8f',
                           market, amount, stop, limit)
