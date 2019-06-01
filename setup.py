@@ -35,19 +35,15 @@ setup(name='donnie',
       license='GPL v3',
       packages=['donnie'],
       setup_requires=['pandas', 'numpy', 'scipy'],
-      install_requires=[
-          'pymongo',
-          'poloniexapi',
-          'finta'
-      ],
+      install_requires=['pymongo', 'poloniexapi', 'finta'],
       zip_safe=False,
-      keywords=['poloniex', 'poloniexapi', 'exchange', 'api', 'tradebot', 'framework'],
+      keywords=['poloniex', 'poloniexapi', 'exchange',
+                'api', 'tradebot', 'framework'],
       classifiers = [
             'Operating System :: MacOS :: MacOS X',
             'Operating System :: Microsoft :: Windows',
             'Operating System :: POSIX',
             'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
-            'Programming Language :: Python :: 2',
             'Programming Language :: Python :: 3'
             ]
       )
