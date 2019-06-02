@@ -63,6 +63,9 @@ class Poloniex(poloniex.Poloniex):
             self.logger.info('%s sell stop order triggered! (%s)',
                              self.stopOrders[id]['market'],
                              str(stop))
+            if self.stopOrders[id]['callback']:
+                self.stopOrders[id]['callback'](**self.stopOrders[id])
+
         # buy
         if amount > 0 and stop <= float(lowAsk):
             # dont place order if we are testing
@@ -78,13 +81,16 @@ class Poloniex(poloniex.Poloniex):
             self.logger.info('%s buy stop order triggered! (%s)',
                              self.stopOrders[id]['market'],
                              str(stop))
+            if self.stopOrders[id]['callback']:
+                self.stopOrders[id]['callback'](**self.stopOrders[id])
 
 
-    def addStopLimit(self, market, amount, stop, limit, test=False):
+    def addStopLimit(self, market, amount, stop, limit, callback=None, test=False):
         self.stopOrders[market+str(stop)] = {'market': market,
                                              'amount': amount,
                                              'stop': stop,
                                              'limit': limit,
+                                             'callback': callback,
                                              'test': test,
                                              'order': False
                                             }
@@ -92,10 +98,21 @@ class Poloniex(poloniex.Poloniex):
                           market, amount, stop, limit)
 
     def ticker(self, market=None):
-        '''returns ticker data saved from websocket '''
+        """
+        Returns ticker data saved from websocket. Returns a logger error
+        and REST ticker data if the socket isnt running or subscribed to the
+        ticker.
+        """
         if not self._t or not self._running or self.channels['1002']['sub']:
             self.logger.error("Websocket isn't running or not subscribed to ticker!")
             return self.returnTicker()
         if market:
             return self.tick[self._ids[market]]
         return self.tick
+
+
+    def stopCallback(**kwargs):
+        """
+        Example callback for stop orders
+        """
+        print(kwargs)
