@@ -100,12 +100,17 @@ class Poloniex(poloniex.Poloniex):
     def ticker(self, market=None):
         """
         Returns ticker data saved from websocket. Returns a logger error
-        and REST ticker data if the socket isnt running or subscribed to the
-        ticker.
+        and REST ticker data if the socket isnt running. Auto-subscribes to
+        ticker if the socket is running and not subscribed.
         """
-        if not self._t or not self._running or self.channels['1002']['sub']:
-            self.logger.error("Websocket isn't running or not subscribed to ticker!")
-            return self.returnTicker()
+        if not self.channels['1002']['sub']:
+            if not self._t or not self._running:
+                self.logger.error("Websocket isn't running!")
+                return self.returnTicker()
+            else:
+                self.logger.error("Not subscribed to ticker! Subscribing...")
+                self.subscribe('1002')
+                return self.returnTicker()
         if market:
             return self.tick[self._ids[market]]
         return self.tick
