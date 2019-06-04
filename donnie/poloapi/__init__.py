@@ -64,7 +64,7 @@ class Poloniex(poloniex.Poloniex):
                              self.stopOrders[id]['market'],
                              str(stop))
             if self.stopOrders[id]['callback']:
-                self.stopOrders[id]['callback'](**self.stopOrders[id])
+                self.stopOrders[id]['callback'](id)
 
         # buy
         if amount > 0 and stop <= float(lowAsk):
@@ -82,7 +82,7 @@ class Poloniex(poloniex.Poloniex):
                              self.stopOrders[id]['market'],
                              str(stop))
             if self.stopOrders[id]['callback']:
-                self.stopOrders[id]['callback'](**self.stopOrders[id])
+                self.stopOrders[id]['callback'](id)
 
 
     def addStopLimit(self, market, amount, stop, limit, callback=None, test=False):
@@ -116,8 +116,8 @@ class Poloniex(poloniex.Poloniex):
         return self.tick
 
 
-    def stopCallback(**kwargs):
+    def cbck(id):
         """
         Example callback for stop orders
         """
-        print(kwargs)
+        print(self.stopOrders[id])
