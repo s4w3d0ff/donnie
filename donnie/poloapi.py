@@ -33,13 +33,13 @@ class Poloniex(poloniex.Poloniex):
                                   'low24hr': data[9]
                                   }
         # check stop orders
-        mkt = self.channels[str(data[0])]['name']
+        mkt = self.channels[str(int(data[0]))]['name']
         la = data[2]
         hb = data[3]
         for id in self.stopOrders:
             # market matches and the order hasnt triggered yet
             if str(self.stopOrders[id].market) == str(mkt) and not self.stopOrders[id]['order']:
-                self.logger.debug('%s lowAsk=%s highBid=%s', mkt, str(la), str(hb))
+                self.logger.info('%s lowAsk=%s highBid=%s', mkt, str(la), str(hb))
                 self._check_stop(id, la, hb)
 
 
@@ -94,7 +94,7 @@ class Poloniex(poloniex.Poloniex):
                                              'test': test,
                                              'order': False
                                             }
-        self.logger.debug('%s stop limit set: [Amount]%.8f [Stop]%.8f [Limit]%.8f',
+        self.logger.info('%s stop limit set: [Amount]%.8f [Stop]%.8f [Limit]%.8f',
                           market, amount, stop, limit)
 
     def ticker(self, market=None):
