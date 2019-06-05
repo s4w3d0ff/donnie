@@ -115,7 +115,7 @@ class Poloniex(poloniex.Poloniex):
         return self.tick
 
 
-    def cbck(id):
+    def cbck(self, id):
         """
         Example callback for stop orders
         """
