@@ -38,10 +38,9 @@ class Poloniex(poloniex.Poloniex):
         hb = data[3]
         for id in self.stopOrders:
             # market matches and the order hasnt triggered yet
-            if str(self.stopOrders[id].market) == str(mkt) and not self.stopOrders[id]['order']:
+            if str(self.stopOrders[id]['market']) == str(mkt) and not self.stopOrders[id]['order']:
                 self.logger.info('%s lowAsk=%s highBid=%s', mkt, str(la), str(hb))
                 self._check_stop(id, la, hb)
-
 
 
     def _check_stop(self, id, lowAsk, highBid):
@@ -121,3 +120,30 @@ class Poloniex(poloniex.Poloniex):
         Example callback for stop orders
         """
         print(self.stopOrders[id])
+
+
+
+import donnie
+import logging
+logging.basicConfig()
+test = donnie.poloapi.Poloniex('key', 'secret')
+test.logger.setLevel(logging.INFO)
+tick = test.returnTicker()
+test.addStopLimit(market='BTC_LTC',
+                  amount=0.5,
+                  stop=float(tick['BTC_LTC']['lowestAsk'])+0.000001,
+                  limit=float(0.004),
+                  callback=test.cbck,
+                  # remove or set 'test' to false to place real orders
+                  test=True)
+
+test.addStopLimit(market='BTC_LTC',
+                  amount=-0.5,
+                  stop=float(tick['BTC_LTC']['highestBid'])-0.000001,
+                  limit=float(0.004),
+                  callback=test.cbck,
+                  # remove or set 'test' to false to place real orders
+                  test=True)
+test.startws(['ticker'])
+donnie.tools.sleep(120)
+test.stopws(3)
