@@ -1,9 +1,13 @@
 import poloniex
+from .tools import getDatabase, getLogger, TA
+
+logger = getLogger(__name__)
 
 
-class Poloniex(poloniex.Poloniex):
+class Poloniex(poloniex.PoloniexSocketed):
     def __init__(self, *args, **kwargs):
         super(Poloniex, self).__init__(*args, **kwargs)
+        self.db = getDatabase('poloniex')
         # holds stop orders
         self.stopOrders = {}
         # holds ticker data
@@ -33,15 +37,14 @@ class Poloniex(poloniex.Poloniex):
                                   'low24hr': data[9]
                                   }
         # check stop orders
-        mkt = self.channels[str(data[0])]['name']
+        mkt = self.channels[str(int(data[0]))]['name']
         la = data[2]
         hb = data[3]
         for id in self.stopOrders:
             # market matches and the order hasnt triggered yet
-            if str(self.stopOrders[id].market) == str(mkt) and not self.stopOrders[id]['order']:
-                self.logger.debug('%s lowAsk=%s highBid=%s', mkt, str(la), str(hb))
+            if str(self.stopOrders[id]['market']) == str(mkt) and not self.stopOrders[id]['order']:
+                self.logger.info('%s lowAsk=%s highBid=%s', mkt, str(la), str(hb))
                 self._check_stop(id, la, hb)
-
 
 
     def _check_stop(self, id, lowAsk, highBid):
@@ -64,7 +67,7 @@ class Poloniex(poloniex.Poloniex):
                              self.stopOrders[id]['market'],
                              str(stop))
             if self.stopOrders[id]['callback']:
-                self.stopOrders[id]['callback'](**self.stopOrders[id])
+                self.stopOrders[id]['callback'](id)
 
         # buy
         if amount > 0 and stop <= float(lowAsk):
@@ -82,7 +85,7 @@ class Poloniex(poloniex.Poloniex):
                              self.stopOrders[id]['market'],
                              str(stop))
             if self.stopOrders[id]['callback']:
-                self.stopOrders[id]['callback'](**self.stopOrders[id])
+                self.stopOrders[id]['callback'](id)
 
 
     def addStopLimit(self, market, amount, stop, limit, callback=None, test=False):
@@ -94,25 +97,30 @@ class Poloniex(poloniex.Poloniex):
                                              'test': test,
                                              'order': False
                                             }
-        self.logger.debug('%s stop limit set: [Amount]%.8f [Stop]%.8f [Limit]%.8f',
+        self.logger.info('%s stop limit set: [Amount]%.8f [Stop]%.8f [Limit]%.8f',
                           market, amount, stop, limit)
 
     def ticker(self, market=None):
         """
         Returns ticker data saved from websocket. Returns a logger error
-        and REST ticker data if the socket isnt running or subscribed to the
-        ticker.
+        and REST ticker data if the socket isnt running. Auto-subscribes to
+        ticker if the socket is running and not subscribed.
         """
-        if not self._t or not self._running or self.channels['1002']['sub']:
-            self.logger.error("Websocket isn't running or not subscribed to ticker!")
-            return self.returnTicker()
+        if not self.channels['1002']['sub']:
+            if not self._t or not self._running:
+                self.logger.error("Websocket isn't running!")
+                return self.returnTicker()
+            else:
+                self.logger.error("Not subscribed to ticker! Subscribing...")
+                self.subscribe('1002')
+                return self.returnTicker()
         if market:
             return self.tick[self._ids[market]]
         return self.tick
 
 
-    def stopCallback(**kwargs):
+    def cbck(self, id):
         """
         Example callback for stop orders
         """
-        print(kwargs)
+        print(self.stopOrders[id])
