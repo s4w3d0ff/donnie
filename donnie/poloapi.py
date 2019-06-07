@@ -1,5 +1,5 @@
 import poloniex
-from tools import getDatabase, getLogger, TA
+from .tools import getDatabase, getLogger, TA
 
 logger = getLogger(__name__)
 
