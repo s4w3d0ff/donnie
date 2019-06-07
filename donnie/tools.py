@@ -117,6 +117,15 @@ def shuffleDataFrame(df):
     del df['index']
     return df.reindex(np.random.permutation(df.index))
 
+def addIndicators(self, df, indica={}):
+    avail = dir(TA)
+    for ind in indica:
+        if ind in availInd:
+            df = pd.concat(
+                [getattr(TA, ind)(ohlc=df, **indica[ind]), df], 
+                axis=1
+                )
+    return df
 
 def getDatabase(db):
     """ Returns a mongodb database """
