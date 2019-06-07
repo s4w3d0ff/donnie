@@ -1,9 +1,13 @@
 import poloniex
+from tools import getDatabase, getLogger, TA
+
+logger = getLogger(__name__)
 
 
-class Poloniex(poloniex.Poloniex):
+class Poloniex(poloniex.PoloniexSocketed):
     def __init__(self, *args, **kwargs):
         super(Poloniex, self).__init__(*args, **kwargs)
+        self.db = getDatabase('poloniex')
         # holds stop orders
         self.stopOrders = {}
         # holds ticker data
