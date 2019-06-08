@@ -36,6 +36,7 @@ import numpy as np
 import pandas as pd
 import pymongo
 from finta import TA
+import tqdm
 
 getLogger = logging.getLogger
 
@@ -118,19 +119,61 @@ def shuffleDataFrame(df):
     return df.reindex(np.random.permutation(df.index))
 
 def addIndicators(self, df, indica={}):
+    """ Adds indicators to a ohlc df using 'finta.TA' """
     avail = dir(TA)
     for ind in indica:
         if ind in availInd:
             df = pd.concat(
-                [getattr(TA, ind)(ohlc=df, **indica[ind]), df], 
+                [getattr(TA, ind)(ohlc=df, **indica[ind]), df],
                 axis=1
                 )
     return df
 
+def zoomOHLC(df, zoom):
+    """ Resamples a ohlc df """
+    df.set_index('date', inplace=True)
+    df = df.resample(rule=zoom,
+                     closed='left',
+                     label='left').apply({'open': 'first',
+                                          'high': 'max',
+                                          'low': 'min',
+                                          'close': 'last',
+                                          'quoteVolume': 'sum',
+                                          'volume': 'sum',
+                                          'weightedAverage': 'mean'})
+    df.reset_index(inplace=True)
+    return df
+    
 def getDatabase(db):
     """ Returns a mongodb database """
     return DB[db]
 
+def getLastEntry(db):
+    """ Get the last entry of a collection """
+    try:
+        return db.find().sort({'_id':-1}).limit(1)
+    except:
+        return False
+
+def updateChartData(db, data):
+    """ Upserts chart data into db with a tqdm wrapper. """
+    for i in tqdm.trange(len(data)):
+        db.update_one({'_id': data[i]['date']}, {
+                      "$set": data[i]}, upsert=True)
+
+def getChartDataFrame(db, start):
+    """
+    Gets the last collection entrys starting from 'start' and puts them in a df
+    """
+    try:
+        df = pd.DataFrame(list(db.find({"_id": {
+            "$gt": start
+            }}).sort('timestamp', pymongo.ASCENDING)))
+        # set date column to datetime
+        df['date'] = pd.to_datetime(df["_id"], unit='s')
+        return df
+    except:
+        return False
 
 def wait(i=10):
     """ Wraps 'time.sleep()' with logger output """

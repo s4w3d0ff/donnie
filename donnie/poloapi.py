@@ -1,6 +1,6 @@
 import poloniex
-import tqdm
-from .tools import getDatabase, getLogger, pymongo, pd, time, addIndicators
+from .tools import (getDatabase, getLogger, zoomOHLC, addIndicators,
+                    getChartDataFrame, updateChartData, getLastEntry)
 
 logger = getLogger(__name__)
 
@@ -127,69 +127,48 @@ class Poloniex(poloniex.PoloniexSocketed):
         print(self.stopOrders[id])
 
 
-    def chartDataFrame(self, pair, start=False, zoom=False, indica=False):
+    def chartDataFrame(self, pair, start=172800, zoom=False, indica=False):
         """ returns chart data in a dataframe from mongodb, updates/fills the
         data, the date column is the '_id' of each candle entry, and
         the date column has been removed. Use 'start' to restrict the amount
         of data returned.
         Example: 'start=time() - api.YEAR' will return last years data
         """
-        if not start:
-            start = time() - self.YEAR * 1
         dbcolName = pair.upper() + '-chart'
 
-        # get db connection
+        # get db collection
         db = self.db[dbcolName]
 
-        # get last candle
-        try:
-            last = list(db.find({"_id": {
-                "$gt": time() - self.WEEK * 2
-            }}).sort('timestamp', pymongo.ASCENDING))[-1]
-        except:
-            last = False
+        # get last candle data
+        last = getLastEntry(db)
 
         # no entrys found, get all 5min data from poloniex
         if not last:
             self.logger.warning('%s collection is empty!', dbcolName)
-            self.logger.debug('Getting new %s candles from Poloniex...', pair)
-            new = self.returnChartData(pair,
-                                       period=60 * 5,
-                                       start=time() - self.YEAR * 13)
-        # just get the data we are missing
-        else:
-            self.logger.debug('Getting new %s candles from Poloniex...', pair)
-            new = self.returnChartData(pair,
-                                       period=60 * 5,
-                                       start=int(last['_id']))
+            last = {'_id': poloniex.time() - self.YEAR * 13}
+
+        # get needed data
+        self.logger.debug('Getting new %s candles from Poloniex...', pair)
+        new = self.returnChartData(pair,
+                                   period=60 * 5,
+                                   start=int(last['_id']))
+
         # add new candles
-        for i in tqdm.trange(len(new)):
-            db.update_one({'_id': new[i]['date']}, {
-                          "$set": new[i]}, upsert=True)
+        self.logger.debug(
+            'Updating %s database with %s entrys...', pair, str(len(new))
+            )
+        updateChartData(db, new)
 
         # make dataframe
         self.logger.debug('Getting %s chart data from db', pair)
-        df = pd.DataFrame(list(db.find({"_id": {"$gt": start}}
-                                       ).sort('timestamp', pymongo.ASCENDING)))
-
-        # set date column to datetime
-        df['date'] = pd.to_datetime(df["_id"], unit='s')
+        df = getChartDataFrame(db, start)
 
         # adjust candle period 'zoom'
         if zoom:
-            self.logger.debug('Zooming %s dataframe...', pair)
-            df.set_index('date', inplace=True)
-            df = df.resample(rule=zoom,
-                             closed='left',
-                             label='left').apply({'open': 'first',
-                                                  'high': 'max',
-                                                  'low': 'min',
-                                                  'close': 'last',
-                                                  'quoteVolume': 'sum',
-                                                  'volume': 'sum',
-                                                  'weightedAverage': 'mean'})
-            df.reset_index(inplace=True)
+            df = zoomOHLC(df, zoom)
+
         # add TA indicators
         if indica:
             df = addIndicators(df, indica)
+
         return df
