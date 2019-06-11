@@ -118,13 +118,13 @@ def shuffleDataFrame(df):
     del df['index']
     return df.reindex(np.random.permutation(df.index))
 
-def addIndicators(self, df, indica={}):
+def addIndicators(self, df, conf={}):
     """ Adds indicators to a ohlc df using 'finta.TA' """
     avail = dir(TA)
-    for ind in indica:
-        if ind in availInd:
+    for ind in conf:
+        if ind in avail:
             df = pd.concat(
-                [getattr(TA, ind)(ohlc=df, **indica[ind]), df],
+                [getattr(TA, ind)(ohlc=df, **conf[ind]), df],
                 axis=1
                 )
     return df
