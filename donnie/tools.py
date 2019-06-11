@@ -163,9 +163,7 @@ def getChartDataFrame(db, start):
     Gets the last collection entrys starting from 'start' and puts them in a df
     """
     try:
-        df = pd.DataFrame(list(db.find({"_id": {
-            "$gt": start
-            }}).sort('timestamp', pymongo.ASCENDING)))
+        df = pd.DataFrame(list(db.find({"_id": {"$gt": start}})))
         # set date column to datetime
         df['date'] = pd.to_datetime(df["_id"], unit='s')
         return df
