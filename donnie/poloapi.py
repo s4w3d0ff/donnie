@@ -150,7 +150,7 @@ class Poloniex(poloniex.PoloniexSocketed):
                 '_id': UTCstr2epoch("2015-01-01", fmat="%Y-%m-%d")
                 }
 
-        stop = int(last['_id']) # last candle to look for
+        stop = int(last['_id'])
         start = poloniex.time()
         end = poloniex.time()
 
@@ -171,8 +171,6 @@ class Poloniex(poloniex.PoloniexSocketed):
                 )
             updateChartData(db, new)
             end = start
-
-
 
         # make dataframe
         self.logger.debug('Getting %s chart data from db', pair)
