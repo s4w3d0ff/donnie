@@ -143,8 +143,8 @@ def zoomOHLC(df, zoom):
                                           'quoteVolume': 'sum',
                                           'volume': 'sum',
                                           'weightedAverage': 'mean'})
-    df.set_index('_id', inplace=True)
-    return df
+    df.reset_index(inplace=True)
+    return df.set_index('_id')
 
 def getDatabase(db):
     """ Returns a mongodb database """
