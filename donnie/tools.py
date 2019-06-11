@@ -36,6 +36,7 @@ import numpy as np
 import pandas as pd
 import pymongo
 from finta import TA
+import tqdm
 
 getLogger = logging.getLogger
 
@@ -117,11 +118,61 @@ def shuffleDataFrame(df):
     del df['index']
     return df.reindex(np.random.permutation(df.index))
 
+def addIndicators(df, conf={}):
+    """ Adds indicators to a ohlc df using 'finta.TA' """
+    avail = dir(TA)
+    for ind in conf:
+        if ind in avail:
+            df = pd.concat(
+                [getattr(TA, ind)(ohlc=df, **conf[ind]), df],
+                axis=1
+                )
+    return df
+
+def zoomOHLC(df, zoom):
+    """ Resamples a ohlc df """
+    df.reset_index(inplace=True)
+    df.set_index('date', inplace=True)
+    df = df.resample(rule=zoom,
+                     closed='left',
+                     label='left').apply({'_id': 'first',
+                                          'open': 'first',
+                                          'high': 'max',
+                                          'low': 'min',
+                                          'close': 'last',
+                                          'quoteVolume': 'sum',
+                                          'volume': 'sum',
+                                          'weightedAverage': 'mean'})
+    df.reset_index(inplace=True)
+    return df.set_index('_id')
 
 def getDatabase(db):
     """ Returns a mongodb database """
     return DB[db]
 
+def getLastEntry(db):
+    """ Get the last entry of a collection """
+    return db.find_one(sort=[('_id', pymongo.DESCENDING)])
+
+def updateChartData(db, data):
+    """ Upserts chart data into db with a tqdm wrapper. """
+    for i in tqdm.trange(len(data)):
+        db.update_one({'_id': data[i]['date']}, {
+                      "$set": data[i]}, upsert=True)
+
+def getChartDataFrame(db, start):
+    """
+    Gets the last collection entrys starting from 'start' and puts them in a df
+    """
+    try:
+        df = pd.DataFrame(list(db.find({"_id": {"$gt": start}})))
+        # set date column to datetime
+        df['date'] = pd.to_datetime(df["_id"], unit='s')
+        df.set_index('_id', inplace=True)
+        return df
+    except Exception as e:
+        logger.exception(e)
+        return False
 
 def wait(i=10):
     """ Wraps 'time.sleep()' with logger output """

@@ -1,5 +1,7 @@
 import poloniex
-from .tools import getDatabase, getLogger, TA
+from .tools import (getDatabase, getLogger, zoomOHLC, addIndicators,
+                    getChartDataFrame, updateChartData, getLastEntry,
+                    UTCstr2epoch, epoch2UTCstr)
 
 logger = getLogger(__name__)
 
@@ -7,6 +9,8 @@ logger = getLogger(__name__)
 class Poloniex(poloniex.PoloniexSocketed):
     def __init__(self, *args, **kwargs):
         super(Poloniex, self).__init__(*args, **kwargs)
+        if not 'jsonNums' in kwargs:
+            self.jsonNums = float
         self.db = getDatabase('poloniex')
         # holds stop orders
         self.stopOrders = {}
@@ -124,3 +128,74 @@ class Poloniex(poloniex.PoloniexSocketed):
         Example callback for stop orders
         """
         print(self.stopOrders[id])
+
+
+    def chartDataFrame(self, pair, frame=172800, zoom=False, indica=False):
+        """ returns chart data in a dataframe from mongodb, updates/fills the
+        data, the date column is the '_id' of each candle entry, and
+        the date column has been removed. Use 'frame' to restrict the amount
+        of data returned.
+        Example: 'frame=self.YEAR' will return last years data
+        """
+        dbcolName = pair.upper() + '-chart'
+
+        # get db collection
+        db = self.db[dbcolName]
+
+        # get last candle data
+        last = getLastEntry(db)
+
+        # no entrys found, get all 5min data from poloniex
+        if not last:
+            self.logger.warning('%s collection is empty!', dbcolName)
+            last = {
+                '_id': UTCstr2epoch("2015-01-01", fmat="%Y-%m-%d")
+                }
+
+        stop = int(last['_id'])
+        start = poloniex.time()
+        end = poloniex.time()
+        flag = True
+        while not int(stop) == int(start) and flag:
+            #
+            start = start - self.MONTH * 3
+
+            # dont go past 'stop'
+            if start < stop:
+                start = stop
+
+            # get needed data
+            self.logger.debug('Getting %s - %s %s candles from Poloniex...',
+                              epoch2UTCstr(start), epoch2UTCstr(end), pair)
+            new = self.returnChartData(pair,
+                                       period=60 * 5,
+                                       start=start,
+                                       end=end)
+
+            # stop if data has stopped comming in
+            if len(new) == 1:
+                flag = False
+
+            # add new candles
+            self.logger.debug(
+                'Updating %s database with %s entrys...', pair, str(len(new))
+                )
+
+            updateChartData(db, new)
+
+            # make new end the old start
+            end = start
+
+        # make dataframe
+        self.logger.debug('Getting %s chart data from db', pair)
+        df = getChartDataFrame(db, poloniex.time() - frame)
+
+        # adjust candle period 'zoom'
+        if zoom:
+            df = zoomOHLC(df, zoom)
+
+        # add TA indicators
+        if indica:
+            df = addIndicators(df, indica)
+
+        return df
