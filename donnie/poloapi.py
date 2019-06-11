@@ -9,6 +9,8 @@ logger = getLogger(__name__)
 class Poloniex(poloniex.PoloniexSocketed):
     def __init__(self, *args, **kwargs):
         super(Poloniex, self).__init__(*args, **kwargs)
+        if not 'jsonNums' in kwargs:
+            self.jsonNums = float
         self.db = getDatabase('poloniex')
         # holds stop orders
         self.stopOrders = {}
