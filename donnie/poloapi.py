@@ -131,9 +131,9 @@ class Poloniex(poloniex.PoloniexSocketed):
     def chartDataFrame(self, pair, frame=172800, zoom=False, indica=False):
         """ returns chart data in a dataframe from mongodb, updates/fills the
         data, the date column is the '_id' of each candle entry, and
-        the date column has been removed. Use 'start' to restrict the amount
+        the date column has been removed. Use 'frame' to restrict the amount
         of data returned.
-        Example: 'start=time() - api.YEAR' will return last years data
+        Example: 'frame=self.YEAR' will return last years data
         """
         dbcolName = pair.upper() + '-chart'
 
@@ -156,7 +156,7 @@ class Poloniex(poloniex.PoloniexSocketed):
 
         while not int(stop) == int(start):
             start = start - self.MONTH * 3
-            
+
             if start < stop:
                 start = stop
 
@@ -176,7 +176,7 @@ class Poloniex(poloniex.PoloniexSocketed):
 
         # make dataframe
         self.logger.debug('Getting %s chart data from db', pair)
-        df = getChartDataFrame(db, frame)
+        df = getChartDataFrame(db, poloniex.time() - frame)
 
         # adjust candle period 'zoom'
         if zoom:
