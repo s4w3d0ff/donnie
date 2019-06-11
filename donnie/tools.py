@@ -151,7 +151,7 @@ def getDatabase(db):
 def getLastEntry(db):
     """ Get the last entry of a collection """
     return db.find_one(sort=[('_id', pymongo.DESCENDING)])
-    
+
 def updateChartData(db, data):
     """ Upserts chart data into db with a tqdm wrapper. """
     for i in tqdm.trange(len(data)):
@@ -169,7 +169,8 @@ def getChartDataFrame(db, start):
         # set date column to datetime
         df['date'] = pd.to_datetime(df["_id"], unit='s')
         return df
-    except:
+    except Exception as e:
+        logger.exception(e)
         return False
 
 def wait(i=10):
