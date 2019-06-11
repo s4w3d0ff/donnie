@@ -141,7 +141,7 @@ def zoomOHLC(df, zoom):
                                           'quoteVolume': 'sum',
                                           'volume': 'sum',
                                           'weightedAverage': 'mean'})
-    df.reset_index(inplace=True)
+    df.set_index('_id', inplace=True)
     return df
 
 def getDatabase(db):
@@ -166,6 +166,7 @@ def getChartDataFrame(db, start):
         df = pd.DataFrame(list(db.find({"_id": {"$gt": start}})))
         # set date column to datetime
         df['date'] = pd.to_datetime(df["_id"], unit='s')
+        df.set_index('_id', inplace=True)
         return df
     except Exception as e:
         logger.exception(e)
