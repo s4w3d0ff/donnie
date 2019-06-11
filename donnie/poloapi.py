@@ -1,6 +1,7 @@
 import poloniex
 from .tools import (getDatabase, getLogger, zoomOHLC, addIndicators,
-                    getChartDataFrame, updateChartData, getLastEntry)
+                    getChartDataFrame, updateChartData, getLastEntry,
+                    UTCstr2epoch)
 
 logger = getLogger(__name__)
 
