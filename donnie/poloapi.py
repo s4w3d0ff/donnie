@@ -147,20 +147,32 @@ class Poloniex(poloniex.PoloniexSocketed):
         if not last:
             self.logger.warning('%s collection is empty!', dbcolName)
             last = {
-                '_id': poloniex.time() - UTCstr2epoch("2015-01-01",
-                                                      fmat="%Y-%m-%d")
+                '_id': UTCstr2epoch("2015-01-01", fmat="%Y-%m-%d")
                 }
-        # get needed data
-        self.logger.debug('Getting new %s candles from Poloniex...', pair)
-        new = self.returnChartData(pair,
-                                   period=60 * 5,
-                                   start=int(last['_id']))
 
-        # add new candles
-        self.logger.debug(
-            'Updating %s database with %s entrys...', pair, str(len(new))
-            )
-        updateChartData(db, new)
+        stop = int(last['_id']) # last candle to look for
+        start = poloniex.time()
+        end = poloniex.time()
+
+        while not int(stop) == int(start):
+            start = start - self.MONTH * 3
+            # make sure we
+            if start < stop:
+                start = stop
+
+            # get needed data
+            self.logger.debug('Getting %s-%s %s candles from Poloniex...',
+                              str(start), str(end), pair)
+            new = self.returnChartData(pair, period=60 * 5, start=start, end=end)
+
+            # add new candles
+            self.logger.debug(
+                'Updating %s database with %s entrys...', pair, str(len(new))
+                )
+            updateChartData(db, new)
+            end = start
+
+
 
         # make dataframe
         self.logger.debug('Getting %s chart data from db', pair)
