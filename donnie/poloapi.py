@@ -145,8 +145,10 @@ class Poloniex(poloniex.PoloniexSocketed):
         # no entrys found, get all 5min data from poloniex
         if not last:
             self.logger.warning('%s collection is empty!', dbcolName)
-            last = {'_id': poloniex.time() - self.YEAR * 13}
-
+            last = {
+                '_id': poloniex.time() - UTCstr2epoch("2015-01-01",
+                                                      fmat="%Y-%m-%d")
+                }
         # get needed data
         self.logger.debug('Getting new %s candles from Poloniex...', pair)
         new = self.returnChartData(pair,
