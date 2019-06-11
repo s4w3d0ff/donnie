@@ -128,7 +128,7 @@ class Poloniex(poloniex.PoloniexSocketed):
         print(self.stopOrders[id])
 
 
-    def chartDataFrame(self, pair, start=172800, zoom=False, indica=False):
+    def chartDataFrame(self, pair, frame=172800, zoom=False, indica=False):
         """ returns chart data in a dataframe from mongodb, updates/fills the
         data, the date column is the '_id' of each candle entry, and
         the date column has been removed. Use 'start' to restrict the amount
@@ -176,7 +176,7 @@ class Poloniex(poloniex.PoloniexSocketed):
 
         # make dataframe
         self.logger.debug('Getting %s chart data from db', pair)
-        df = getChartDataFrame(db, start)
+        df = getChartDataFrame(db, frame)
 
         # adjust candle period 'zoom'
         if zoom:
