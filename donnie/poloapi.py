@@ -1,7 +1,7 @@
 import poloniex
 from .tools import (getDatabase, getLogger, zoomOHLC, addIndicators,
                     getChartDataFrame, updateChartData, getLastEntry,
-                    UTCstr2epoch)
+                    UTCstr2epoch, epoch2UTCstr)
 
 logger = getLogger(__name__)
 
@@ -156,13 +156,13 @@ class Poloniex(poloniex.PoloniexSocketed):
 
         while not int(stop) == int(start):
             start = start - self.MONTH * 3
-            # make sure we
+            
             if start < stop:
                 start = stop
 
             # get needed data
-            self.logger.debug('Getting %s-%s %s candles from Poloniex...',
-                              str(start), str(end), pair)
+            self.logger.debug('Getting %s - %s %s candles from Poloniex...',
+                              epoch2UTCstr(start), epoch2UTCstr(end), pair)
             new = self.returnChartData(pair, period=60 * 5, start=start, end=end)
 
             # add new candles

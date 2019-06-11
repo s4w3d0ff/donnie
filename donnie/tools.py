@@ -143,18 +143,15 @@ def zoomOHLC(df, zoom):
                                           'weightedAverage': 'mean'})
     df.reset_index(inplace=True)
     return df
-    
+
 def getDatabase(db):
     """ Returns a mongodb database """
     return DB[db]
 
 def getLastEntry(db):
     """ Get the last entry of a collection """
-    try:
-        return db.find().sort({'_id':-1}).limit(1)
-    except:
-        return False
-
+    return db.find_one(sort=[('_id', pymongo.DESCENDING)])
+    
 def updateChartData(db, data):
     """ Upserts chart data into db with a tqdm wrapper. """
     for i in tqdm.trange(len(data)):
