@@ -131,16 +131,19 @@ def addIndicators(df, conf={}):
 
 def zoomOHLC(df, zoom):
     """ Resamples a ohlc df """
+    df.reset_index(inplace=True)
     df.set_index('date', inplace=True)
     df = df.resample(rule=zoom,
                      closed='left',
-                     label='left').apply({'open': 'first',
+                     label='left').apply({'_id': 'first',
+                                          'open': 'first',
                                           'high': 'max',
                                           'low': 'min',
                                           'close': 'last',
                                           'quoteVolume': 'sum',
                                           'volume': 'sum',
                                           'weightedAverage': 'mean'})
+    df.set_index('_id', inplace=True)
     return df
 
 def getDatabase(db):
