@@ -155,23 +155,35 @@ class Poloniex(poloniex.PoloniexSocketed):
         stop = int(last['_id'])
         start = poloniex.time()
         end = poloniex.time()
-
-        while not int(stop) == int(start):
+        flag = True
+        while not int(stop) == int(start) and flag:
+            #
             start = start - self.MONTH * 3
 
+            # dont go past 'stop'
             if start < stop:
                 start = stop
 
             # get needed data
             self.logger.debug('Getting %s - %s %s candles from Poloniex...',
                               epoch2UTCstr(start), epoch2UTCstr(end), pair)
-            new = self.returnChartData(pair, period=60 * 5, start=start, end=end)
+            new = self.returnChartData(pair,
+                                       period=60 * 5,
+                                       start=start,
+                                       end=end)
+
+            # stop if data has stopped comming in
+            if len(new) == 1:
+                flag = False
 
             # add new candles
             self.logger.debug(
                 'Updating %s database with %s entrys...', pair, str(len(new))
                 )
+
             updateChartData(db, new)
+
+            # make new end the old start
             end = start
 
         # make dataframe
