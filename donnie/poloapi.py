@@ -39,12 +39,12 @@ class Poloniex(poloniex.PoloniexSocketed):
         self.stopOrders = {}
         # holds ticker data
         self.tick = {}
+        # holds market ids
+        self._ids = {}
         # get inital ticker data
         iniTick = self.returnTicker()
-        # save a dict of the market ids to referace
-        self._ids = {market: int(iniTick[market]['id']) for market in iniTick}
-        # save ticker data as float instead of str
         for market in iniTick:
+            self._ids[market] = int(iniTick[market]['id'])
             self.tick[self._ids[market]] = {
                 item: float(iniTick[market][item]) for item in iniTick[market]
                 }
