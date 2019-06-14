@@ -22,6 +22,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from . import tools
 from . import poloapi
+from . import brain
 
 logger = tools.getLogger(__name__)
 
