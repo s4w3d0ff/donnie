@@ -21,9 +21,9 @@ script:
   # test import
   - python -c 'import donnie'
 # cashe pip
-cache:
-  directories:
-    - $HOME/.cache/pip
+#cache:
+  #directories:
+    #- $HOME/.cache/pip
 deploy:
   provider: pypi
   user: s4w3d0ff
