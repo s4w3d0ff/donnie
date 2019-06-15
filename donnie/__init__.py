@@ -25,3 +25,6 @@ from . import poloapi
 from . import brain
 
 logger = tools.getLogger(__name__)
+
+Poloniex = poloapi.Poloniex
+Brain = brain.Brain
