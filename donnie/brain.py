@@ -30,30 +30,7 @@ import joblib
 from .tools import (getLogger, pd, np, time, shuffleDataFrame,
                      json, isString, prepDataframe, splitTrainTestData)
 
-
 logger = getLogger(__name__)
-
-
-def customLabels(df, *args, **kwargs):
-    """
-    Creates labels from a dataframe
-    """
-    logger.debug('Adding labels')
-
-    def _labels(candle, bbLimit=False, rsiLimit=False, pchLimit=False,
-                cciLimit=False, macdLimit=False, forceLimit=False,
-                eomLimit=False):
-        score = 0
-        if bbLimit:
-            smabb = candle['smapercent']
-            if smabb > bbLimit:
-                score += -1
-            if smabb < -bbLimit:
-                score += 1
-
-        return score
-
-    return df.apply(_labels, axis=1, *args, **kwargs)
 
 
 class Brain(object):
