@@ -28,7 +28,7 @@ from sklearn.metrics import accuracy_score
 import joblib
 
 from .tools import (getLogger, pd, np, time, shuffleDataFrame,
-                     json, isString)
+                     json, isString, prepDataframe, splitTrainTestData)
 
 
 logger = getLogger(__name__)
@@ -54,18 +54,6 @@ def customLabels(df, *args, **kwargs):
         return score
 
     return df.apply(_labels, axis=1, *args, **kwargs)
-
-
-def prepDataframe(df):
-    """ Preps a dataframe for sklearn, removing infinity and droping nan """
-    # make infinity nan and drop nan
-    return df.replace([np.inf, -np.inf], np.nan).dropna()
-
-
-def splitTrainTestData(df, size=1):
-    """ Splits a dataframe by <size> starting from the rear """
-    # split db
-    return df.iloc[:-size], df.tail(size)
 
 
 class Brain(object):
