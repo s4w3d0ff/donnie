@@ -22,43 +22,9 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from . import tools
 from . import poloapi
+from . import brain
 
 logger = tools.getLogger(__name__)
 
-
-class Donnie(object):
-
-    def __init__(self, key=None, secret=None, interval=2, *args, **kwargs):
-        if not 'jsonNums' in kwargs:
-            kwargs['jsonNums'] = float
-        self.api = poloapi.Poloniex(key, secret, *args, **kwargs)
-        self._running = False
-        self.interval = interval
-        self.mThread = None
-
-    def setKeys(self, key, secret):
-        self.api.key = key
-        self.api.secret = secret
-
-    def run(self):
-        while self._running:
-            tools.sleep(self.interval)
-
-    def start(self):
-        self.mThread = tools.Thread(target=self.run)
-        self.mThread.daemon = True
-        self._running = True
-        self.mThread.start()
-        logger.info('Main thread started')
-
-    def stop(self):
-        self._running = False
-        self.mThread.join()
-        logger.info('Main thread stopped/joined')
-
-
-if __name__ == '__main__':
-    bot = Donnie()
-    bot.start()
-    tools.sleep(5)
-    bot.stop()
+Poloniex = poloapi.Poloniex
+Brain = brain.Brain

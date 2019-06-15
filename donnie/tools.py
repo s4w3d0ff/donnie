@@ -111,6 +111,16 @@ def isString(obj):
     """
     return isinstance(obj, str if sys.version_info[0] >= 3 else basestring)
 
+def prepDataframe(df):
+    """ Preps a dataframe for sklearn, removing infinity and droping nan """
+    # make infinity nan and drop nan
+    return df.replace([np.inf, -np.inf], np.nan).dropna()
+
+
+def splitTrainTestData(df, size=1):
+    """ Splits a dataframe by <size> starting from the rear """
+    # split db
+    return df.iloc[:-size], df.tail(size)
 
 def shuffleDataFrame(df):
     """ Shuffles the rows of a dataframe """
