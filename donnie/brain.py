@@ -25,7 +25,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier, VotingClassifier
 from sklearn import preprocessing
 from sklearn.metrics import accuracy_score
-from sklearn.externals import joblib
+import joblib
 
 from .tools import (getLogger, pd, np, time, shuffleDataFrame,
                      json, isString)
