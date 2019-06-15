@@ -180,8 +180,8 @@ class Poloniex(poloniex.PoloniexSocketed):
         end = poloniex.time()
         flag = True
         while not int(stop) == int(start) and flag:
-            #
-            start = start - self.MONTH * 3
+            # get 3 months of data at a time
+            start -= self.MONTH * 3
 
             # dont go past 'stop'
             if start < stop:
