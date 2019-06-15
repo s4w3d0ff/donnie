@@ -53,7 +53,7 @@ def customLabels(df, *args, **kwargs):
 
         return score
 
-return df.apply(_labels, axis=1, *args, **kwargs)
+    return df.apply(_labels, axis=1, *args, **kwargs)
 
 
 def prepDataframe(df):
