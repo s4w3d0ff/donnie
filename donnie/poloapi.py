@@ -219,6 +219,6 @@ class Poloniex(poloniex.PoloniexSocketed):
 
         # add TA indicators
         if indica:
-            df = addIndicators(df, indica)
+            df = addIndicators(df, **indica)
 
         return df
