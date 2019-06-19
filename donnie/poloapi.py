@@ -24,7 +24,7 @@
 import poloniex
 from .tools import (getDatabase, getLogger, zoomOHLC, addIndicators,
                     getChartDataFrame, updateChartData, getLastEntry,
-                    UTCstr2epoch, epoch2UTCstr)
+                    UTCstr2epoch, epoch2UTCstr, time)
 
 logger = getLogger(__name__)
 
@@ -176,8 +176,8 @@ class Poloniex(poloniex.PoloniexSocketed):
                 }
 
         stop = int(last['_id'])
-        start = poloniex.time()
-        end = poloniex.time()
+        start = time()
+        end = time()
         flag = True
         while not int(stop) == int(start) and flag:
             # get 3 months of data at a time
@@ -211,7 +211,7 @@ class Poloniex(poloniex.PoloniexSocketed):
 
         # make dataframe
         self.logger.debug('Getting %s chart data from db', pair)
-        df = getChartDataFrame(db, poloniex.time() - frame)
+        df = getChartDataFrame(db, time() - frame)
 
         # adjust candle period 'zoom'
         if zoom:
