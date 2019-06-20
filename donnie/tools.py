@@ -266,7 +266,7 @@ def roundDown(n, d=8):
     n :: float to be rounded
     d :: int number of decimals to round to
     """
-    d = int('1' + ('0' * d))
+    d = 10**d
     return floor(float(n) * d) / d
 
 
@@ -275,7 +275,7 @@ def roundUp(n, d=8):
     n :: float to be rounded
     d :: int number of decimals to round to
     """
-    d = int('1' + ('0' * d))
+    d = 10**d
     return ceil(float(n) * d) / d
 
 
