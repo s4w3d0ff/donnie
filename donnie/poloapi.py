@@ -31,8 +31,8 @@ logger = getLogger(__name__)
 
 class Poloniex(poloniex.PoloniexSocketed):
     def __init__(self, *args, **kwargs):
-        kwargs['subscribe'] = kwargs.get('subscribe', d=['ticker'])
-        kwargs['startws'] = kwargs.get('startws', d=True)
+        #kwargs['subscribe'] = kwargs.get('subscribe', d=['ticker'])
+        #kwargs['startws'] = kwargs.get('startws', d=True)
         kwargs['jsonNums'] = kwargs.get('jsonNums', d=float)
         super(Poloniex, self).__init__(*args, **kwargs)
         self.db = getDatabase('poloniex')
