@@ -50,6 +50,7 @@ class Poloniex(poloniex.PoloniexSocketed):
                 item: float(iniTick[market][item]) for item in iniTick[market]
                 }
 
+
     def on_ticker(self, msg):
         # save ticker updates to self.tick
         data = [float(dat) for dat in msg]
@@ -78,13 +79,11 @@ class Poloniex(poloniex.PoloniexSocketed):
     def _check_stop(self, id, lowAsk, highBid):
         amount = self.stopOrders[id]['amount']
         stop = self.stopOrders[id]['stop']
-        test = self.stopOrders[id]['test']
         # sell
         if amount < 0 and stop >= float(highBid):
             # dont place order if we are testing
-            if test:
-                self.stopOrders[id]['order'] = True
-            else:
+            self.stopOrders[id]['order'] = True
+            if not self.stopOrders[id]['test']:
                 # sell amount at limit
                 self.stopOrders[id]['order'] = self.sell(
                     self.stopOrders[id]['market'],
@@ -100,10 +99,8 @@ class Poloniex(poloniex.PoloniexSocketed):
         # buy
         if amount > 0 and stop <= float(lowAsk):
             # dont place order if we are testing
-            if test:
-                self.stopOrders[id]['order'] = True
-            else:
-                # buy amount at limit
+            self.stopOrders[id]['order'] = True
+            if not self.stopOrders[id]['test']:
                 self.stopOrders[id]['order'] = self.buy(
                     self.stopOrders[id]['market'],
                     self.stopOrders[id]['limit'],
@@ -127,6 +124,7 @@ class Poloniex(poloniex.PoloniexSocketed):
                                             }
         self.logger.info('%s stop limit set: [Amount]%.8f [Stop]%.8f [Limit]%.8f',
                           market, amount, stop, limit)
+
 
     def ticker(self, market=None):
         """
