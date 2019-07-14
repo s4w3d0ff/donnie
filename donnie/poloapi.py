@@ -24,16 +24,17 @@
 import poloniex
 from .tools import (getDatabase, getLogger, zoomOHLC, addIndicators,
                     getChartDataFrame, updateChartData, getLastEntry,
-                    UTCstr2epoch, epoch2UTCstr)
+                    UTCstr2epoch, epoch2UTCstr, time)
 
 logger = getLogger(__name__)
 
 
 class Poloniex(poloniex.PoloniexSocketed):
     def __init__(self, *args, **kwargs):
+        kwargs['subscribe'] = kwargs.get('subscribe', d={'ticker': self.on_ticker})
+        kwargs['start'] = kwargs.get('start', d=true)
+        kwargs['jsonNums'] = kwargs.get('jsonNums', d=float)
         super(Poloniex, self).__init__(*args, **kwargs)
-        if not 'jsonNums' in kwargs:
-            self.jsonNums = float
         self.db = getDatabase('poloniex')
         # holds stop orders
         self.stopOrders = {}
@@ -48,6 +49,7 @@ class Poloniex(poloniex.PoloniexSocketed):
             self.tick[self._ids[market]] = {
                 item: float(iniTick[market][item]) for item in iniTick[market]
                 }
+
 
     def on_ticker(self, msg):
         # save ticker updates to self.tick
@@ -64,9 +66,11 @@ class Poloniex(poloniex.PoloniexSocketed):
                                   'low24hr': data[9]
                                   }
         # check stop orders
-        mkt = self.channels[str(int(data[0]))]['name']
-        la = data[2]
-        hb = data[3]
+        self.checkMarketStops(int(data[0]), data[2], data[3])
+
+    def checkMarketStops(self, mkt, la, hb):
+        if isinstance(mkt, int):
+            mkt = self._getChannelName(mkt)
         for id in self.stopOrders:
             # market matches and the order hasnt triggered yet
             if str(self.stopOrders[id]['market']) == str(mkt) and not self.stopOrders[id]['order']:
@@ -77,13 +81,11 @@ class Poloniex(poloniex.PoloniexSocketed):
     def _check_stop(self, id, lowAsk, highBid):
         amount = self.stopOrders[id]['amount']
         stop = self.stopOrders[id]['stop']
-        test = self.stopOrders[id]['test']
         # sell
         if amount < 0 and stop >= float(highBid):
             # dont place order if we are testing
-            if test:
-                self.stopOrders[id]['order'] = True
-            else:
+            self.stopOrders[id]['order'] = True
+            if not self.stopOrders[id]['test']:
                 # sell amount at limit
                 self.stopOrders[id]['order'] = self.sell(
                     self.stopOrders[id]['market'],
@@ -99,10 +101,8 @@ class Poloniex(poloniex.PoloniexSocketed):
         # buy
         if amount > 0 and stop <= float(lowAsk):
             # dont place order if we are testing
-            if test:
-                self.stopOrders[id]['order'] = True
-            else:
-                # buy amount at limit
+            self.stopOrders[id]['order'] = True
+            if not self.stopOrders[id]['test']:
                 self.stopOrders[id]['order'] = self.buy(
                     self.stopOrders[id]['market'],
                     self.stopOrders[id]['limit'],
@@ -127,19 +127,20 @@ class Poloniex(poloniex.PoloniexSocketed):
         self.logger.info('%s stop limit set: [Amount]%.8f [Stop]%.8f [Limit]%.8f',
                           market, amount, stop, limit)
 
+
     def ticker(self, market=None):
         """
         Returns ticker data saved from websocket. Returns a logger error
         and REST ticker data if the socket isnt running. Auto-subscribes to
         ticker if the socket is running and not subscribed.
         """
-        if not self.channels['1002']['sub']:
+        if not self.channels['ticker']['sub']:
             if not self._t or not self._running:
                 self.logger.error("Websocket isn't running!")
                 return self.returnTicker()
             else:
                 self.logger.error("Not subscribed to ticker! Subscribing...")
-                self.subscribe('1002')
+                self.subscribe('ticker', self.on_ticker)
                 return self.returnTicker()
         if market:
             return self.tick[self._ids[market]]
@@ -176,12 +177,12 @@ class Poloniex(poloniex.PoloniexSocketed):
                 }
 
         stop = int(last['_id'])
-        start = poloniex.time()
-        end = poloniex.time()
+        start = time()
+        end = time()
         flag = True
         while not int(stop) == int(start) and flag:
-            #
-            start = start - self.MONTH * 3
+            # get 3 months of data at a time
+            start -= self.MONTH * 3
 
             # dont go past 'stop'
             if start < stop:
@@ -211,7 +212,7 @@ class Poloniex(poloniex.PoloniexSocketed):
 
         # make dataframe
         self.logger.debug('Getting %s chart data from db', pair)
-        df = getChartDataFrame(db, poloniex.time() - frame)
+        df = getChartDataFrame(db, time() - frame)
 
         # adjust candle period 'zoom'
         if zoom:
@@ -219,6 +220,6 @@ class Poloniex(poloniex.PoloniexSocketed):
 
         # add TA indicators
         if indica:
-            df = addIndicators(df, indica)
+            df = addIndicators(df, **indica)
 
         return df
