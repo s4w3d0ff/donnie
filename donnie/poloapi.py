@@ -31,8 +31,8 @@ logger = getLogger(__name__)
 
 class Poloniex(poloniex.PoloniexSocketed):
     def __init__(self, *args, **kwargs):
-        #kwargs['subscribe'] = kwargs.get('subscribe', d=['ticker'])
-        #kwargs['startws'] = kwargs.get('startws', d=True)
+        kwargs['subscribe'] = kwargs.get('subscribe', d={'ticker': self.on_ticker})
+        kwargs['start'] = kwargs.get('start', d=true)
         kwargs['jsonNums'] = kwargs.get('jsonNums', d=float)
         super(Poloniex, self).__init__(*args, **kwargs)
         self.db = getDatabase('poloniex')
@@ -66,9 +66,11 @@ class Poloniex(poloniex.PoloniexSocketed):
                                   'low24hr': data[9]
                                   }
         # check stop orders
-        mkt = self.channels[str(int(data[0]))]['name']
-        la = data[2]
-        hb = data[3]
+        self.checkMarketStops(int(data[0]), data[2], data[3])
+
+    def checkMarketStops(self, mkt, la, hb):
+        if isinstance(mkt, int):
+            mkt = self._getChannelName(mkt)
         for id in self.stopOrders:
             # market matches and the order hasnt triggered yet
             if str(self.stopOrders[id]['market']) == str(mkt) and not self.stopOrders[id]['order']:
@@ -132,13 +134,13 @@ class Poloniex(poloniex.PoloniexSocketed):
         and REST ticker data if the socket isnt running. Auto-subscribes to
         ticker if the socket is running and not subscribed.
         """
-        if not self.channels['1002']['sub']:
+        if not self.channels['ticker']['sub']:
             if not self._t or not self._running:
                 self.logger.error("Websocket isn't running!")
                 return self.returnTicker()
             else:
                 self.logger.error("Not subscribed to ticker! Subscribing...")
-                self.subscribe('1002')
+                self.subscribe('ticker', self.on_ticker)
                 return self.returnTicker()
         if market:
             return self.tick[self._ids[market]]
