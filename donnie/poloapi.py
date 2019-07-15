@@ -223,3 +223,79 @@ class Poloniex(poloniex.PoloniexSocketed):
             df = addIndicators(df, **indica)
 
         return df
+
+
+    def myTradeHistory(self, query=None):
+        """
+        Retrives and saves trade history in "poloniex.'self.pair'-tradeHistory"
+        """
+        dbcolName = self.pair + '-tradeHistory'
+        db = getMongoColl('poloniex', dbcolName)
+        # get last trade
+        old = {'date': time() - self.api.YEAR * 10}
+        try:
+            old = list(db.find().sort('date', pymongo.ASCENDING))[-1]
+        except:
+            logger.warning('No %s trades found in database', self.pair)
+        # get new data from poloniex
+        hist = self.api.returnTradeHistory(self.pair, start=old['date'] - 1)
+
+        if len(hist) > 0:
+            logger.info('%d new %s trade database entries',
+                        len(hist), self.pair)
+
+            for trade in hist:
+                _id = trade['globalTradeID']
+                del trade['globalTradeID']
+                trade['date'] = UTCstr2epoch(trade['date'])
+                trade['amount'] = float(trade['amount'])
+                trade['total'] = float(trade['total'])
+                trade['tradeID'] = int(trade['tradeID'])
+                trade['orderNumber'] = int(trade['orderNumber'])
+                trade['rate'] = float(trade['rate'])
+                trade['fee'] = float(trade['fee'])
+                db.update_one({"_id": _id}, {"$set": trade}, upsert=True)
+
+        df = pd.DataFrame(list(db.find(query).sort('date',
+                                                   pymongo.ASCENDING)))
+        if 'date' in df:
+            df['date'] = pd.to_datetime(df["date"], unit='s')
+            df.set_index('date', inplace=True)
+        return df
+
+    def myLendingHistory(self, coin=False, query=False):
+        """
+        Retrives and saves lendingHistory in 'poloniex.lendingHistory' database
+        coin = coin to get history for (defaults to self.child)
+        query = pymongo query for .find() (defaults to last 24 hours)
+        """
+        if not query:
+            query = {'currency': coin, '_id': {'$gt': time() - self.api.DAY}}
+        if not coin:
+            coin = self.child
+        db = getMongoColl('poloniex', 'lendingHistory')
+        # get last entry timestamp
+        old = {'open': time() - self.api.YEAR * 10}
+        try:
+            old = list(db.find({"currency": coin}).sort('open',
+                                                        pymongo.ASCENDING))[-1]
+        except:
+            logger.warning(RD('No %s loan history found in database!'), coin)
+        # get new entries
+        new = self.api.returnLendingHistory(start=old['open'] - 1)
+        nLoans = [loan for loan in new if loan['currency'] == coin]
+        if len(nLoans) > 0:
+            logger.info(GR('%d new lending database entries'), len(new))
+            for loan in nLoans:
+                _id = loan['id']
+                del loan['id']
+                loan['close'] = UTCstr2epoch(loan['close'])
+                loan['open'] = UTCstr2epoch(loan['open'])
+                loan['rate'] = float(loan['rate'])
+                loan['duration'] = float(loan['duration'])
+                loan['interest'] = float(loan['interest'])
+                loan['fee'] = float(loan['fee'])
+                loan['earned'] = float(loan['earned'])
+                db.update_one({'_id': _id}, {'$set': loan}, upsert=True)
+        return pd.DataFrame(list(db.find(query).sort('open',
+                                                     pymongo.ASCENDING)))
