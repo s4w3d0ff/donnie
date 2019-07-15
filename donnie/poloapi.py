@@ -23,8 +23,9 @@
 
 import poloniex
 from .tools import (getDatabase, getLogger, zoomOHLC, addIndicators,
-                    getChartDataFrame, updateChartData, getLastEntry,
-                    UTCstr2epoch, epoch2UTCstr, time)
+                    getChartDataFrame, updateChartData, updateTradeHistData,
+                    updateLendingHistData, getLastEntry, UTCstr2epoch,
+                    epoch2UTCstr, time)
 
 logger = getLogger(__name__)
 
