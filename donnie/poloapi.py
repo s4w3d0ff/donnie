@@ -68,6 +68,7 @@ class Poloniex(poloniex.PoloniexSocketed):
         # check stop orders
         self.checkMarketStops(int(data[0]), data[2], data[3])
 
+
     def checkMarketStops(self, mkt, la, hb):
         if isinstance(mkt, int):
             mkt = self._getChannelName(mkt)
@@ -212,56 +213,69 @@ class Poloniex(poloniex.PoloniexSocketed):
 
         # make dataframe
         self.logger.debug('Getting %s chart data from db', pair)
-        df = getChartDataFrame(db, time() - frame)
-
-        # adjust candle period 'zoom'
-        if zoom:
-            df = zoomOHLC(df, zoom)
-
-        # add TA indicators
-        if indica:
-            df = addIndicators(df, **indica)
+        df = getChartDataFrame(db, time() - frame, zoom, indica)
 
         return df
 
 
-    def myTradeHistory(self, query=None):
+    def myTradeHistory(self, pair, query=None):
         """
-        Retrives and saves trade history in "poloniex.'self.pair'-tradeHistory"
+        Retrives and saves trade history in 'pair'-tradeHistory
         """
-        dbcolName = self.pair + '-tradeHistory'
-        db = getMongoColl('poloniex', dbcolName)
-        # get last trade
-        old = {'date': time() - self.api.YEAR * 10}
-        try:
-            old = list(db.find().sort('date', pymongo.ASCENDING))[-1]
-        except:
-            logger.warning('No %s trades found in database', self.pair)
-        # get new data from poloniex
-        hist = self.api.returnTradeHistory(self.pair, start=old['date'] - 1)
+        dbcolName = pair.upper() + '-tradeHistory'
 
-        if len(hist) > 0:
-            logger.info('%d new %s trade database entries',
-                        len(hist), self.pair)
+        # get db collection
+        db = self.db[dbcolName]
 
-            for trade in hist:
-                _id = trade['globalTradeID']
-                del trade['globalTradeID']
-                trade['date'] = UTCstr2epoch(trade['date'])
-                trade['amount'] = float(trade['amount'])
-                trade['total'] = float(trade['total'])
-                trade['tradeID'] = int(trade['tradeID'])
-                trade['orderNumber'] = int(trade['orderNumber'])
-                trade['rate'] = float(trade['rate'])
-                trade['fee'] = float(trade['fee'])
-                db.update_one({"_id": _id}, {"$set": trade}, upsert=True)
+        # get last trade data
+        last = getLastEntry(db, 'date')
 
-        df = pd.DataFrame(list(db.find(query).sort('date',
-                                                   pymongo.ASCENDING)))
-        if 'date' in df:
-            df['date'] = pd.to_datetime(df["date"], unit='s')
-            df.set_index('date', inplace=True)
+        # no entrys found, get all data from poloniex
+        if not last:
+            self.logger.warning('%s collection is empty!', dbcolName)
+            last = {
+                'date': UTCstr2epoch("2015-01-01", fmat="%Y-%m-%d")
+                }
+
+        stop = int(last['date'])
+        start = time()
+        end = time()
+        flag = True
+        while not int(stop) == int(start) and flag:
+            # get 3 months of data at a time
+            start -= self.MONTH * 3
+
+            # dont go past 'stop'
+            if start < stop:
+                start = stop
+
+            # get needed data
+            self.logger.debug('Getting %s - %s %s trade data from Poloniex...',
+                              epoch2UTCstr(start), epoch2UTCstr(end), pair)
+            new = self.returnTradeHistory(pair,
+                                          start=start,
+                                          end=end)
+
+            # stop if data has stopped comming in
+            if len(new) == 1:
+                flag = False
+
+            # add new data
+            self.logger.debug(
+                'Updating %s database with %s entrys...', pair, str(len(new))
+                )
+
+            updateTradeHistData(db, new)
+
+            # make new end the old start
+            end = start
+
+        # make dataframe
+        self.logger.debug('Getting %s trade data from db', pair)
+
+        df = pd.DataFrame(list(db.find(query)))
         return df
+
 
     def myLendingHistory(self, coin=False, query=False):
         """

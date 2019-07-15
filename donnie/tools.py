@@ -160,9 +160,9 @@ def getDatabase(db):
     """ Returns a mongodb database """
     return DB[db]
 
-def getLastEntry(db):
+def getLastEntry(db, scol='_id'):
     """ Get the last entry of a collection """
-    return db.find_one(sort=[('_id', pymongo.DESCENDING)])
+    return db.find_one(sort=[(scol, pymongo.DESCENDING)])
 
 def updateChartData(db, data):
     """ Upserts chart data into db with a tqdm wrapper. """
@@ -170,7 +170,14 @@ def updateChartData(db, data):
         db.update_one({'_id': data[i]['date']}, {
                       "$set": data[i]}, upsert=True)
 
-def getChartDataFrame(db, start):
+def updateTradeHistData(db, data):
+    """ Upserts trade history data into db with a tqdm wrapper. """
+    for i in tqdm.trange(len(data)):
+        data[i]['date'] = UTCstr2epoch(data[i]['date'])
+        db.update_one({'_id': data[i]['globalTradeID']}, {
+                      "$set": data[i]}, upsert=True)
+
+def getChartDataFrame(db, start, zoom=None, indica=None):
     """
     Gets the last collection entrys starting from 'start' and puts them in a df
     """
@@ -179,6 +186,12 @@ def getChartDataFrame(db, start):
         # set date column to datetime
         df['date'] = pd.to_datetime(df["_id"], unit='s')
         df.set_index('_id', inplace=True)
+        # adjust candle period 'zoom'
+        if zoom:
+            df = zoomOHLC(df, zoom)
+        # add TA indicators
+        if indica:
+            df = addIndicators(df, **indica)
         return df
     except Exception as e:
         logger.exception(e)
