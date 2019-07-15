@@ -277,39 +277,61 @@ class Poloniex(poloniex.PoloniexSocketed):
         return df
 
 
-    def myLendingHistory(self, coin=False, query=False):
+    def myLendingHistory(self, query=False):
         """
         Retrives and saves lendingHistory in 'poloniex.lendingHistory' database
-        coin = coin to get history for (defaults to self.child)
         query = pymongo query for .find() (defaults to last 24 hours)
         """
-        if not query:
-            query = {'currency': coin, '_id': {'$gt': time() - self.api.DAY}}
-        if not coin:
-            coin = self.child
-        db = getMongoColl('poloniex', 'lendingHistory')
-        # get last entry timestamp
-        old = {'open': time() - self.api.YEAR * 10}
-        try:
-            old = list(db.find({"currency": coin}).sort('open',
-                                                        pymongo.ASCENDING))[-1]
-        except:
-            logger.warning(RD('No %s loan history found in database!'), coin)
-        # get new entries
-        new = self.api.returnLendingHistory(start=old['open'] - 1)
-        nLoans = [loan for loan in new if loan['currency'] == coin]
-        if len(nLoans) > 0:
-            logger.info(GR('%d new lending database entries'), len(new))
-            for loan in nLoans:
-                _id = loan['id']
-                del loan['id']
-                loan['close'] = UTCstr2epoch(loan['close'])
-                loan['open'] = UTCstr2epoch(loan['open'])
-                loan['rate'] = float(loan['rate'])
-                loan['duration'] = float(loan['duration'])
-                loan['interest'] = float(loan['interest'])
-                loan['fee'] = float(loan['fee'])
-                loan['earned'] = float(loan['earned'])
-                db.update_one({'_id': _id}, {'$set': loan}, upsert=True)
+        if query == False:
+            query = {'open': {'$gt': time() - self.DAY}}
+
+
+        dbcolName = 'lendingHistory'
+        # get db collection
+        db = self.db[dbcolName]
+        # get last trade data
+        last = getLastEntry(db, 'open')
+
+        # no entrys found, get all data from poloniex
+        if not last:
+            self.logger.warning('%s collection is empty!', dbcolName)
+            last = {
+                'open': UTCstr2epoch("2015-01-01", fmat="%Y-%m-%d")
+                }
+
+        stop = int(last['open'])
+        start = time()
+        end = time()
+        flag = True
+        while not int(stop) == int(start) and flag:
+            # get 3 months of data at a time
+            start -= self.MONTH * 3
+
+            # dont go past 'stop'
+            if start < stop:
+                start = stop
+
+            # get needed data
+            self.logger.debug('Getting %s - %s lending data from Poloniex...',
+                              epoch2UTCstr(start), epoch2UTCstr(end))
+
+            new = self.returnLendingHistory(start=start, end=end)
+
+            # stop if data has stopped comming in
+            if len(new) == 1:
+                flag = False
+
+            # add new data
+            self.logger.debug(
+                'Updating lending database with %s entrys...', str(len(new))
+                )
+
+            updateLendingHistData(db, new)
+
+            # make new end the old start
+            end = start
+
+        # make dataframe
+        self.logger.debug('Getting lending data from db')
         return pd.DataFrame(list(db.find(query).sort('open',
                                                      pymongo.ASCENDING)))

@@ -177,6 +177,14 @@ def updateTradeHistData(db, data):
         db.update_one({'_id': data[i]['globalTradeID']}, {
                       "$set": data[i]}, upsert=True)
 
+def updateLendingHistData(db, data):
+    """ Upserts lendingHistory history data into db with a tqdm wrapper. """
+    for i in tqdm.trange(len(data)):
+        data[i]['close'] = UTCstr2epoch(data[i]['close'])
+        data[i]['open'] = UTCstr2epoch(data[i]['open'])
+        db.update_one({'_id': data[i]['id']}, {
+                      "$set": data[i]}, upsert=True)
+
 def getChartDataFrame(db, start, zoom=None, indica=None):
     """
     Gets the last collection entrys starting from 'start' and puts them in a df
