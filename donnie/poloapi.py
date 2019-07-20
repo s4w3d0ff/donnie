@@ -32,9 +32,9 @@ logger = getLogger(__name__)
 
 class Poloniex(poloniex.PoloniexSocketed):
     def __init__(self, *args, **kwargs):
-        kwargs['subscribe'] = kwargs.get('subscribe', d={'ticker': self.on_ticker})
-        kwargs['start'] = kwargs.get('start', d=true)
-        kwargs['jsonNums'] = kwargs.get('jsonNums', d=float)
+        kwargs['subscribe'] = kwargs.get('subscribe', {'ticker': self.on_ticker})
+        kwargs['start'] = kwargs.get('start', True)
+        kwargs['jsonNums'] = kwargs.get('jsonNums', float)
         super(Poloniex, self).__init__(*args, **kwargs)
         self.db = getDatabase('poloniex')
         # holds stop orders
