@@ -23,17 +23,18 @@
 
 import poloniex
 from .tools import (getDatabase, getLogger, zoomOHLC, addIndicators,
-                    getChartDataFrame, updateChartData, getLastEntry,
-                    UTCstr2epoch, epoch2UTCstr, time)
+                    getChartDataFrame, updateChartData, updateTradeHistData,
+                    updateLendingHistData, getLastEntry, UTCstr2epoch,
+                    epoch2UTCstr, time)
 
 logger = getLogger(__name__)
 
 
 class Poloniex(poloniex.PoloniexSocketed):
     def __init__(self, *args, **kwargs):
-        kwargs['subscribe'] = kwargs.get('subscribe', d={'ticker': self.on_ticker})
-        kwargs['start'] = kwargs.get('start', d=true)
-        kwargs['jsonNums'] = kwargs.get('jsonNums', d=float)
+        kwargs['subscribe'] = kwargs.get('subscribe', {'ticker': self.on_ticker})
+        kwargs['start'] = kwargs.get('start', True)
+        kwargs['jsonNums'] = kwargs.get('jsonNums', float)
         super(Poloniex, self).__init__(*args, **kwargs)
         self.db = getDatabase('poloniex')
         # holds stop orders
@@ -67,6 +68,7 @@ class Poloniex(poloniex.PoloniexSocketed):
                                   }
         # check stop orders
         self.checkMarketStops(int(data[0]), data[2], data[3])
+
 
     def checkMarketStops(self, mkt, la, hb):
         if isinstance(mkt, int):
@@ -212,14 +214,125 @@ class Poloniex(poloniex.PoloniexSocketed):
 
         # make dataframe
         self.logger.debug('Getting %s chart data from db', pair)
-        df = getChartDataFrame(db, time() - frame)
-
-        # adjust candle period 'zoom'
-        if zoom:
-            df = zoomOHLC(df, zoom)
-
-        # add TA indicators
-        if indica:
-            df = addIndicators(df, **indica)
+        df = getChartDataFrame(db, time() - frame, zoom, indica)
 
         return df
+
+
+    def myTradeHistory(self, pair, query=None):
+        """
+        Retrives and saves trade history in 'pair'-tradeHistory
+        """
+        dbcolName = pair.upper() + '-tradeHistory'
+
+        # get db collection
+        db = self.db[dbcolName]
+
+        # get last trade data
+        last = getLastEntry(db, 'date')
+
+        # no entrys found, get all data from poloniex
+        if not last:
+            self.logger.warning('%s collection is empty!', dbcolName)
+            last = {
+                'date': UTCstr2epoch("2015-01-01", fmat="%Y-%m-%d")
+                }
+
+        stop = int(last['date'])
+        start = time()
+        end = time()
+        flag = True
+        while not int(stop) == int(start) and flag:
+            # get 3 months of data at a time
+            start -= self.MONTH * 3
+
+            # dont go past 'stop'
+            if start < stop:
+                start = stop
+
+            # get needed data
+            self.logger.debug('Getting %s - %s %s trade data from Poloniex...',
+                              epoch2UTCstr(start), epoch2UTCstr(end), pair)
+            new = self.returnTradeHistory(pair,
+                                          start=start,
+                                          end=end)
+
+            # stop if data has stopped comming in
+            if len(new) == 1:
+                flag = False
+
+            # add new data
+            self.logger.debug(
+                'Updating %s database with %s entrys...', pair, str(len(new))
+                )
+
+            updateTradeHistData(db, new)
+
+            # make new end the old start
+            end = start
+
+        # make dataframe
+        self.logger.debug('Getting %s trade data from db', pair)
+
+        df = pd.DataFrame(list(db.find(query)))
+        return df
+
+
+    def myLendingHistory(self, query=False):
+        """
+        Retrives and saves lendingHistory in 'poloniex.lendingHistory' database
+        query = pymongo query for .find() (defaults to last 24 hours)
+        """
+        if query == False:
+            query = {'open': {'$gt': time() - self.DAY}}
+
+
+        dbcolName = 'lendingHistory'
+        # get db collection
+        db = self.db[dbcolName]
+        # get last trade data
+        last = getLastEntry(db, 'open')
+
+        # no entrys found, get all data from poloniex
+        if not last:
+            self.logger.warning('%s collection is empty!', dbcolName)
+            last = {
+                'open': UTCstr2epoch("2015-01-01", fmat="%Y-%m-%d")
+                }
+
+        stop = int(last['open'])
+        start = time()
+        end = time()
+        flag = True
+        while not int(stop) == int(start) and flag:
+            # get 3 months of data at a time
+            start -= self.MONTH * 3
+
+            # dont go past 'stop'
+            if start < stop:
+                start = stop
+
+            # get needed data
+            self.logger.debug('Getting %s - %s lending data from Poloniex...',
+                              epoch2UTCstr(start), epoch2UTCstr(end))
+
+            new = self.returnLendingHistory(start=start, end=end)
+
+            # stop if data has stopped comming in
+            if len(new) == 1:
+                flag = False
+
+            # add new data
+            self.logger.debug(
+                'Updating lending database with %s entrys...', str(len(new))
+                )
+
+            updateLendingHistData(db, new)
+
+            # make new end the old start
+            end = start
+
+        # make dataframe
+        self.logger.debug('Getting lending data from db')
+        return pd.DataFrame(list(db.find(query).sort('open',
+                                                     pymongo.ASCENDING)))
